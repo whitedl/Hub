@@ -69,8 +69,8 @@ def fetch(
         'tweet_count': 'int64',
         'user_desc': str,
         'verified': bool,
-        'user_loc_lat': float,
-        'user_loc_long': float,
+        'user_loc_lat': 'float64',
+        'user_loc_long': 'float64',
         'user_age': 'int32'
     }
 
