@@ -10,12 +10,13 @@ from __future__ import annotations
 import datetime
 import requests
 from meerschaum.utils.typing import SuccessTuple, Dict, List, Any, Optional
+import translators as ts
 
 __version__ = '0.0.2'
 
 required = ['requests', 'pandas', 'numpy', 'tweepy', 'pytz']
 
-
+# Registers the plugin with meerschaum when it's added as a pipe. Only run once.
 def register(pipe, **kw):
     from meerschaum.config import get_plugin_config, write_plugin_config
     from meerschaum.utils.prompt import prompt
@@ -36,6 +37,7 @@ def register(pipe, **kw):
         },
     }
 
+# Runs each time the plugin retrieves data.
 def fetch(
         pipe,
         begin: Optional[datetime.datetime] = None,
@@ -74,6 +76,7 @@ def fetch(
         'user_age': 'int32'
     }
 
+    # Set twitter search query
     query = 'xinjiang'
 
     # Information to get about the tweets and users
@@ -81,6 +84,8 @@ def fetch(
     expansions = ['author_id', 'geo.place_id']
     place_fields = ['full_name', 'id', 'geo', 'place_type']
     user_fields = ['id', 'name', 'username', 'location', 'public_metrics', 'verified', 'description', 'created_at']
+
+    # Set maximum number of results to retrieve
     max_results = 10
 
     tweets_df = pd.DataFrame()
@@ -97,8 +102,9 @@ def fetch(
     if results.data:
         # Loop through each tweet
         for tweet in results.data:
-            # Set up tweet dict with values we can easily fetch
+            # Set up user dict with so we can easily get user values
             user = users[tweet.author_id]
+            # Get data from tweet
             tweet_data = {
                 'timestamp': tweet.created_at,
                 'text': tweet.text,
@@ -119,6 +125,7 @@ def fetch(
                 'user_age': (datetime.datetime.now(pytz.utc) - user.created_at).days
             }
 
+            # Some tweets have extra information like hashtags and user locations.
             # If the tweet has extra info
             if tweet.entities:
                 # If there were urls
@@ -142,7 +149,9 @@ def fetch(
 
             # Get geocoded lat and long from the user's reported location if they supplied one
             if tweet_data['user_reported_location']:
+                # Get geocode response
                 pos = geocode(tweet_data['user_reported_location'])
+                # Process geocode response
                 if pos:
                     pos = pos[0]['position']
                     tweet_data['user_loc_lat'] = pos['lat']
@@ -161,17 +170,49 @@ def fetch(
 
     return tweets_final
 
+# SYNC HAS NOT BEEN TESTED AND MAY NOT WORK
+
+# Sync calls fetch and does extra processing on the fetched data.
+def sync(pipe, **kw):
+    import meerschaum as mrsm
+    # Gets data using fetch function
+    pipe.sync(fetch(pipe, **kw), **kw)
+    # Create child pipe, adding a column for translated text
+    child_pipe = mrsm.Pipe(
+        pipe.connector_keys,
+        pipe.metric_key,
+        columns = pipe.columns + ['translated']
+    )
+    # get data from the last minute
+    fetched_data = pipe.get_backtrack_data(1)
+    # copy fetched data to child data and add translated text column
+    child_data = fetched_data.assign(
+        # translate each non-english tweet
+        translated=lambda row: translate(row.text, row.lang) if row.lang != 'en' else ""
+    )
+    # Add the fetched and additional data to the child pipe
+    return child_pipe.sync(child_data, **kw)
+
+# Translate text in a given language
+def translate(text, lang):
+    return ts.google(text, from_language=lang)
+
 # Get the geocode information from a place name string
 def geocode(location):
+    # Set URL
     geocode_url = f"https://geocode.search.hereapi.com/v1/geocode?q={location}&apikey=nacXHor6-tXlB5zT96YYP0iWi83i6E-kntlARVQOK48"
     try:
+        # Request geocoded response
         results = requests.get(geocode_url)
     except requests.exceptions.RequestException as err:
+        # If the geocoder errors, return none.
         print(f"Could not find location for: {location}")
         return None
     else:
         results = results.json()
+        # If the geocoder couldn't geocode the location, return none.
         if 'items' not in results:
             print(f"Could not find location for: {location}")
             return None
+        # Return the geocoded location.
         return results['items']
