@@ -6,6 +6,7 @@ required = ['pandas', 'random', 'datetime']
 
 import meerschaum as mrsm
 from meerschaum.utils.packages import lazy_import
+from meerschaum.utils.typing import SuccessTuple
 
 # Lazy import so that it doesn't need to be loaded every time mrsm is called,
 # only when it's needed
@@ -27,21 +28,18 @@ def fetch(pipe: mrsm.Pipe, **kw):
     import datetime
 
     now = datetime.datetime.now()
-    df = pd.DataFrame()
+    data = []
 
     # Generate 3 rows of random data
     for i in range(3):
-        data = {
+        data.append({
             # Ensure distinct timestamps
             'timestamp': now + datetime.timedelta(seconds=i),
             'random1': random.randint(1, 100),
             'random2': random.randint(101, 200)
-        }
-        # Populate df row-by-row
-        df_new = pd.DataFrame([data])
-        df = pd.concat([df, df_new], ignore_index=True)
-
-    return df
+        })
+        
+    return pd.DataFrame(data)
 
 def sync(pipe: mrsm.Pipe, **kw):
     """Syncs parent pipe, creates child pipe, derives 
@@ -55,7 +53,7 @@ def sync(pipe: mrsm.Pipe, **kw):
     """
     # Only continue if we're dealing with the parent pipe.
     if pipe.location_key is not None:
-        return True, "Success"
+        return SuccessTuple
 
     # Fetch data
     parent_data = fetch(pipe, **kw)
@@ -69,7 +67,7 @@ def sync(pipe: mrsm.Pipe, **kw):
     # Add the fetched and additional data to the child pipe
     return child_pipe.sync(child_data, **kw)
 
-def get_child_data(parent_data: pd.DataFrame):
+def get_child_data(parent_data: 'pd.DataFrame'):
     """Derives new data from parent data.
 
     Args:
