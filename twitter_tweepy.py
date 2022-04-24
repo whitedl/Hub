@@ -170,23 +170,22 @@ def fetch(
 
     return tweets_final
 
-# SYNC HAS NOT BEEN TESTED AND MAY NOT WORK
-
 # Sync calls fetch and does extra processing on the fetched data.
 def sync(pipe, **kw):
     import meerschaum as mrsm
-    # Gets data using fetch function
-    pipe.sync(fetch(pipe, **kw), **kw)
+
+    parent_data = fetch(pipe, **kw)
+
+    pipe.sync(parent_data, **kw)
     # Create child pipe, adding a column for translated text
     child_pipe = mrsm.Pipe(
         pipe.connector_keys,
         pipe.metric_key,
-        columns = pipe.columns + ['translated']
+        'expanded',
+        columns = pipe.columns
     )
-    # get data from the last minute
-    fetched_data = pipe.get_backtrack_data(1)
     # copy fetched data to child data and add translated text column
-    child_data = fetched_data.assign(
+    child_data = parent_data.assign(
         # translate each non-english tweet
         translated=lambda row: translate(row.text, row.lang) if row.lang != 'en' else ""
     )
