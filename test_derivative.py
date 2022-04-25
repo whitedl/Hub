@@ -6,7 +6,6 @@ required = ['pandas', 'random', 'datetime']
 
 import meerschaum as mrsm
 from meerschaum.utils.packages import lazy_import
-from meerschaum.utils.typing import SuccessTuple
 
 # Lazy import so that it doesn't need to be loaded every time mrsm is called,
 # only when it's needed
@@ -38,7 +37,7 @@ def fetch(pipe: mrsm.Pipe, **kw):
             'random1': random.randint(1, 100),
             'random2': random.randint(101, 200)
         })
-        
+
     return pd.DataFrame(data)
 
 def sync(pipe: mrsm.Pipe, **kw):
@@ -53,7 +52,7 @@ def sync(pipe: mrsm.Pipe, **kw):
     """
     # Only continue if we're dealing with the parent pipe.
     if pipe.location_key is not None:
-        return SuccessTuple
+        return True, "Success"
 
     # Fetch data
     parent_data = fetch(pipe, **kw)
