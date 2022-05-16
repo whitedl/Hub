@@ -199,7 +199,7 @@ def translate(text, lang):
 # Get the geocode information from a place name string
 def geocode(location):
     # Set URL
-    geocode_url = f"https://geocode.search.hereapi.com/v1/geocode?q={location}&apikey=nacXHor6-tXlB5zT96YYP0iWi83i6E-kntlARVQOK48"
+    geocode_url = f"https://geocode.search.hereapi.com/v1/geocode?q={location}&apikey=8UbFla0HBKHve3BHIOOku75Nxi_-Rgej5xq2OfO_4ME"
     try:
         # Request geocoded response
         results = requests.get(geocode_url)
